@@ -330,42 +330,50 @@ class OBJECT_OT_AnimateFollowPath(Operator):
         self.report({'INFO'}, "Path animation applied.")
         return {'FINISHED'}
     
-class VIEW3D_OT_UseSelectedNURBSToAnimateCamera(Operator):
-    bl_idname = "view3d.use_selected_nurbs_to_animate_camera"
-    bl_label = "Use Selected NURBS Curve for Camera Animation"
-    bl_description = "Assign the selected NURBS curve as the path for the camera, add a target, and animate"
+class VIEW3D_OT_UseSelectedCurveToAnimateCamera(Operator):
+    bl_idname = "view3d.use_selected_curve_to_animate_camera"
+    bl_label = "Use Selected Curve for Camera Animation"
+    bl_description = "Assign the selected curve (NURBS, Bezier, etc.) as the path for the camera, add a target, and animate"
 
     def execute(self, context):
-        # Check if a NURBS curve is selected
+        # Check if a curve is selected
         selected_obj = context.active_object
-        if selected_obj is None or selected_obj.type != 'CURVE' or not any(spline.type == 'NURBS' for spline in selected_obj.data.splines):
-            self.report({'ERROR'}, "Please select a NURBS curve")
+        if selected_obj is None or selected_obj.type != 'CURVE':
+            self.report({'ERROR'}, "Please select a curve (NURBS, Bezier, etc.)")
             return {'CANCELLED'}
+
         # Create a unique collection for organizing elements
-        collection_name = f"Cito_NURBS_Animation_Setup_{len(bpy.data.collections)}"
+        collection_name = f"Cito_Curve_Animation_Setup_{len(bpy.data.collections)}"
         animation_collection = bpy.data.collections.new(collection_name)
         context.scene.collection.children.link(animation_collection)
 
         # Create the camera
         bpy.ops.object.camera_add(location=(0, 0, 0))
         camera = context.active_object
-        camera.name = "Cito_Animated_NURBS_Camera"
-        animation_collection.objects.link(camera)
+        camera.name = "Cito_Animated_Curve_Camera"
 
-        # Unlink the camera from the scene collection
+        # Ensure the camera is first in the Scene Collection
+        if camera.name not in context.scene.collection.objects:
+            context.scene.collection.objects.link(camera)
+
+        # Link the camera to the new animation collection
+        if camera.name not in animation_collection.objects:
+            animation_collection.objects.link(camera)
+        
+        # Unlink the camera from the Scene Collection if necessary
         context.scene.collection.objects.unlink(camera)
 
         # Add a Follow Path constraint to the camera
         follow_path = camera.constraints.new(type='FOLLOW_PATH')
         follow_path.target = selected_obj
-        follow_path.use_curve_follow = True  # This ensures the camera follows the curve orientation
-        follow_path.forward_axis = 'FORWARD_X'  # Ensures the camera moves forward (default forward axis for Blender)
-        follow_path.up_axis = 'UP_Y'  # Ensures the up axis is Y (Blender default)
+        follow_path.use_curve_follow = True  # Follow curve orientation
+        follow_path.forward_axis = 'FORWARD_X'
+        follow_path.up_axis = 'UP_Y'
 
         # Create a target in front of the camera, attached to the path
         bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
         target_empty = context.active_object
-        target_empty.name = "Cito_Target_NURBS"
+        target_empty.name = "Cito_Target_Curve"
         animation_collection.objects.link(target_empty)
 
         # Attach the target to the same path (optional: offset it slightly forward)
@@ -377,8 +385,8 @@ class VIEW3D_OT_UseSelectedNURBSToAnimateCamera(Operator):
         # Make the camera track the empty target
         track_to = camera.constraints.new(type='TRACK_TO')
         track_to.target = target_empty
-        track_to.track_axis = 'TRACK_NEGATIVE_Z'  # Negative Z-axis (looking forward in Blender cameras)
-        track_to.up_axis = 'UP_Y'  # Positive Y-axis as the up axis
+        track_to.track_axis = 'TRACK_NEGATIVE_Z'
+        track_to.up_axis = 'UP_Y'
 
         # Set frame range for the animation
         context.scene.frame_start = 1
@@ -392,7 +400,7 @@ class VIEW3D_OT_UseSelectedNURBSToAnimateCamera(Operator):
         follow_path.offset_factor = 1  # End of the path (full circle)
         follow_path.keyframe_insert(data_path="offset_factor", frame=context.scene.frame_end)
 
-        self.report({'INFO'}, f"Animation setup created with NURBS path in collection {collection_name}.")
+        self.report({'INFO'}, f"Animation setup created with curve path in collection {collection_name}.")
         return {'FINISHED'}
 
     
@@ -462,7 +470,7 @@ classes = [
     CitoViewSelectedCamera,
     VIEW3D_OT_CitoCreateAnimationSetup,
     OBJECT_OT_AnimateFollowPath,
-    VIEW3D_OT_UseSelectedNURBSToAnimateCamera,
+    VIEW3D_OT_UseSelectedCurveToAnimateCamera,
     OBJECT_OT_AnimateNURBSPath,
     VIEW3D_OT_CitoViewportRenderAnimation,
 ]
