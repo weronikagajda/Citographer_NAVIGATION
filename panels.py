@@ -132,7 +132,7 @@ class SubPanel_PT_SelectedPath(Panel):
     
     def draw(self, context):
         layout = self.layout
-        layout.operator("view3d.use_selected_nurbs_to_animate_camera", text="Selected Path Animation", icon="CURVE_NCURVE")
+        layout.operator("view3d.use_selected_curve_to_animate_camera", text="Selected Path Animation", icon="CURVE_NCURVE")
         layout.operator("object.animate_nurbs_path", text="Animate Path", icon="ANIM")
 
 class SubPanel_PT_RenderAnimation(Panel):
